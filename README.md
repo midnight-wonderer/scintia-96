@@ -46,7 +46,13 @@ Round keys are generated using the standard Speck-128 key schedule logic, adapte
 
 ## Keygen
 
-You can generate a compatible 128-bit key for use in your Rust code using the following one-liners.
+Use the interactive script for guided key generation:
+
+```bash
+python3 scripts/keygen.py
+```
+
+For quick usage, you can also use these one-liners:
 
 ### Random Generation
 Generate a unique, cryptographically secure random key using `/dev/urandom`:
