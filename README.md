@@ -1,86 +1,105 @@
-# Scintia-96
+# 🌌 Scintia-96
 
-A keyed 96-bit permutation with a 128-bit key.
+[![Crates.io](https://img.shields.io/crates/v/scintia-96.svg)](https://crates.io/crates/scintia-96)
+[![Documentation](https://docs.rs/scintia-96/badge.svg)](https://docs.rs/scintia-96)
+[![License](https://img.shields.io/badge/license-BSD--2--Clause-blue.svg)](LICENSE.md)
+[![Rust](https://img.shields.io/badge/rust-2024-orange.svg)](https://www.rust-lang.org)
 
-## What's the use case?
+**Scintia-96** is a lightweight, keyed 96-bit permutation built for situations where you need guaranteed uniqueness for a 96-bit input. ⚡
 
-I can't talk for others, but the algorithm exists at all because I want to derive USB Serial Number from 96-bit unique chip IDs on STM32 microcontrollers.
-Permutation is more suitable than hash, because the result will inherit the guaranteed uniqueness from the input.
+---
 
-## The algorithm
+## 🚀 Quick Start
 
-The algorithm is based on the Speck block cipher with a few modifications.
-It run Speck-64/128 in 3-word Generalized Feistel Network and bump the round numbers to address slower diffusion from adding a third lane.
-
-## The security
-
-I am not a cryptographer and I can't vouch for cryptographic properties. But these are the promises:
-- It will pass the avalanche and random distribution tests.
-- It is a permutation function, it will map 96-bit input to 96-bit output one-to-one, no collision.
-- It will prevent anyone from reverse engineering the input from the output without the key.
-- It will not prevent side channel attacks; someone who could do that is better off breaking into the chip and read the key from Flash memory.
-- The promises hold only when you don't mess up the key generation.
-
-## Awareness
-
-I hope no one use this to encrypt sensitive data. As we already have Xoodyak for AEAD, KDF, MAC, and what not. There are good reasons why there is no mainstream block ciphers operating on 96-bit block.
-
-## The why
-
-### Why starting with Speck-64/128? Why not just use Speck-96/144?
-
-Word size: Speck64 has 32-bit word size.
-
-### Why keyed permutation?
-
-So that my USB Serial Number isn't the same as yours, if you happen to use this permutation for the same purpose.
-
-### Why 32 rounds?
-
-Sine we have 3 lanes and we leave one out in each round, only doing linear operation on the leftover, diffusion is slower. More round number is required to compensate.
-
-## Usage
+Getting started is easy! Add it to your project:
 
 ```bash
 cargo add scintia-96
 ```
 
-### Quick Start
+### Basic Usage
 
 ```rust
 use scintia_96::Scintia96;
 
+// 128-bit key (4 x u32)
 const KEY: [u32; 4] = [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10];
 const PERMUTATION: Scintia96 = Scintia96::new(KEY);
 
 fn main() {
+    // 96-bit block (3 x u32)
     let block = [0xdeadbeef, 0xcafebabe, 0xfacefeed];
+    
+    // Permute it!
     let permuted = PERMUTATION.permute(block);
-    println!("Permuted: {:?}", permuted);
+    
+    println!("Original: {:x?}", block);
+    println!("Permuted: {:x?}", permuted);
 }
 ```
 
-## Keygen
+---
 
-Use the interactive script for guided key generation:
+## 🎯 Why Scintia-96?
+
+### The Use Case
+
+Ever needed to derive a **USB serial number** from a 96-bit unique chip ID (like those on STM32 microcontrollers)? That's exactly why Scintia-96 exists! 🛠️
+
+While you could use a hash function, a **permutation** is often more suitable for cases like this. Since it's a one-to-one mapping, the output inherits the guaranteed uniqueness of the input, meaning there can never be a collision.
+
+### Why a Keyed Permutation?
+
+By using a key, you ensure that your derived result is unique to *your* use case. Even if other apps use Scintia-96 for the same purpose, their results will differ from yours. 🧂
+
+---
+
+## 🛠️ The Algorithm
+
+Scintia-96 is based on the **Speck** block cipher (specifically Speck-64/128) with a few tweaks:
+- **3-word GFN:** It operates on three 32-bit words using a Generalized Feistel Network.
+- **32 Rounds:** Since we have 3 lanes and leave one out each round, diffusion is slightly slower. We bumped the round count to 32 to compensate and ensure robust mixing. 🌪️
+
+---
+
+## 🔒 Security & Promises
+
+I'm a developer, not a cryptographer, so I can't vouch for its resistance to cryptanalysis. But here’s what Scintia-96 brings to the table:
+
+* ✅ **No Collisions:** It's a true permutation: 96-bit input, 96-bit output, with a one-to-one mapping.
+* ✅ **Statistically Sound:** Passes avalanche and random distribution tests.
+* ✅ **Hard to Reverse:** Prevents recovery of the input without the key.
+* ❌ **Not Side-Channel Resistant:** If an attacker can perform side-channel analysis on your hardware, they can probably just as well extract the key from flash memory. 🤷‍♂️
+
+### ⚠️ A Note on Safety
+
+**Please don't use this to encrypt sensitive data.** For AEAD, KDF, or MAC use cases, stick to well-established primitives like **Xoodyak**. Again, Scintia-96 is a keyed permutation, not a block cipher!
+
+---
+
+## 🔑 Key Generation
+
+We provide a handy script to generate keys for your project:
 
 ```bash
 python3 scripts/keygen.py
 ```
 
-For quick usage, you can also use these one-liners:
+### Quick One-Liners
 
-### Random Generation
-Generate a unique, cryptographically secure random key using `/dev/urandom`:
-
+**Random Generation** (via `/dev/urandom`):
 ```bash
 python3 -c "import os; d=os.urandom(16); print('const KEY: [u32; 4] = [%s];' % ', '.join('0x%08x' % int.from_bytes(d[i:i+4], 'big') for i in range(0, 16, 4)))"
 ```
 
-### Deterministic Derivation
-Derive a key from a specific string (key material) using SHA-512. This is useful for creating specific variants or reproducible configurations:
-
+**Deterministic Derivation** (via SHA-512):
 ```bash
-key_material="my variant"
+key_material="my-unique-variant"
 python3 -c "import hashlib; m='$key_material'; h=hashlib.sha512(('scintia-96:key:'+m).encode()).digest(); print('// derive_key(\"%s\")\nconst KEY: [u32; 4] = [%s];' % (m, ', '.join('0x%08x' % int.from_bytes(h[i:i+4], 'big') for i in range(0, 16, 4))))"
 ```
+
+---
+
+## 📜 License
+
+This project is licensed under the **BSD 2-Clause License**. See [LICENSE.md](LICENSE.md) for the full text. 📄
