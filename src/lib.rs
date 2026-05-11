@@ -17,7 +17,7 @@ pub struct Scintia96 {
 impl Scintia96 {
     /// Creates a new Scintia-96 instance from a 128-bit key (4 x u32).
     #[inline]
-    pub fn new(key: [u32; 4]) -> Self {
+    pub const fn new(key: [u32; 4]) -> Self {
         Self { key }
     }
 
@@ -117,5 +117,12 @@ mod tests {
 
         assert_eq!(result1, result2);
         assert_ne!(result1, block);
+    }
+
+    #[test]
+    fn test_const_initialization() {
+        const KEY: [u32; 4] = [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10];
+        const CIPHER: Scintia96 = Scintia96::new(KEY);
+        assert_eq!(CIPHER.key[0], 0x01020304);
     }
 }
