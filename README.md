@@ -52,7 +52,7 @@ You can generate a compatible 128-bit key for use in your Rust code using the fo
 Generate a unique, cryptographically secure random key using `/dev/urandom`:
 
 ```bash
-printf "const KEY: [u32; 4] = [%s, %s, %s, %s];\n" $(head -c 16 /dev/urandom | od -An -vtx4 | awk '{for(i=1;i<=NF;i++) print "0x"$i}')
+python3 -c "import os; d=os.urandom(16); print('const KEY: [u32; 4] = [%s];' % ', '.join('0x%08x' % int.from_bytes(d[i:i+4], 'big') for i in range(0, 16, 4)))"
 ```
 
 ### Deterministic Derivation
@@ -60,5 +60,5 @@ Derive a key from a specific string (key material) using SHA-512. This is useful
 
 ```bash
 key_material="my variant"
-(echo -n "scintia-96:key:$key_material" | sha512sum 2>/dev/null || echo -n "scintia-96:key:$key_material" | shasum -a 512) | awk -v w="$key_material" '{h=$1; printf "// derive_key(\"%s\")\nconst KEY: [u32; 4] = [0x%s, 0x%s, 0x%s, 0x%s];\n", w, substr(h,1,8), substr(h,9,8), substr(h,17,8), substr(h,25,8)}'
+python3 -c "import hashlib; m='$key_material'; h=hashlib.sha512(('scintia-96:key:'+m).encode()).digest(); print('// derive_key(\"%s\")\nconst KEY: [u32; 4] = [%s];' % (m, ', '.join('0x%08x' % int.from_bytes(h[i:i+4], 'big') for i in range(0, 16, 4))))"
 ```
