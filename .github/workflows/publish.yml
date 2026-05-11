@@ -38,11 +38,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Commit and Push back to the default branch only if there are changes
+          # Commit and Push back only if there are changes
           git add Cargo.toml
           if ! git diff --cached --quiet; then
             git commit -m "chore: bump version to $VERSION [skip ci]"
+            
+            # Force-update the tag to the new commit so they stay in sync
+            git tag -f ${{ github.event.release.tag_name }}
+            
+            # Push the branch and the updated tag
             git push origin HEAD:${{ github.event.repository.default_branch }}
+            git push origin ${{ github.event.release.tag_name }} --force
           else
             echo "Version in Cargo.toml is already $VERSION. Skipping commit."
           fi
