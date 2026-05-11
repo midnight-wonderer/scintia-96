@@ -1,0 +1,46 @@
+name: Publish to Crates.io
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Test, Publish & Sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Set version and Sync
+        run: |
+          # Extract version from tag (e.g. v0.1.2 -> 0.1.2)
+          VERSION=${{ github.event.release.tag_name }}
+          VERSION=${VERSION#v}
+          echo "Setting version to $VERSION"
+          
+          # Update Cargo.toml
+          sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
+          
+          # Configure Git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Commit and Push back to the default branch
+          git add Cargo.toml
+          git commit -m "chore: bump version to $VERSION [skip ci]"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
+
+      - name: Publish to Crates.io
+        run: cargo publish --token ${{ secrets.CRATES_TOKEN }}
