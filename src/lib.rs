@@ -125,4 +125,35 @@ mod tests {
         const CIPHER: Scintia96 = Scintia96::new(KEY);
         assert_eq!(CIPHER.key[0], 0x01020304);
     }
+
+    #[test]
+    fn test_vectors() {
+        let cases = [
+            (
+                [0, 0, 0, 0],
+                [0, 0, 0],
+                [0x20e47313, 0x3bd86576, 0x5ed2de89],
+            ),
+            (
+                [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff],
+                [0xffffffff, 0xffffffff, 0xffffffff],
+                [0x25fca5a8, 0xe471bef3, 0x7053daa6],
+            ),
+            (
+                [0x12345678, 0x9abcdef0, 0x0fedcba9, 0x87654321],
+                [0x11223344, 0x55667788, 0x99aabbcc],
+                [0xbf846ba5, 0xe56df4de, 0x0e19b936],
+            ),
+            (
+                [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10],
+                [0xdeadbeef, 0xcafebabe, 0x12345678],
+                [0x52cbbcb8, 0xfa885f9d, 0x5441aac1],
+            ),
+        ];
+
+        for (key, input, expected) in cases {
+            let cipher = Scintia96::new(key);
+            assert_eq!(cipher.permute(input), expected, "Failed for key {:08x?}", key);
+        }
+    }
 }
