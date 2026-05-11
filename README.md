@@ -1,48 +1,64 @@
 # Scintia-96
 
-A keyed 96-bit permutation library for Rust, designed for `no_std` environments.
+A keyed 96-bit permutation with a 128-bit key.
 
-## Features
+## What's the use case?
 
-- **96-bit State**: Operates on 3 x `u32` words.
-- **128-bit Key**: Uses a 4 x `u32` key.
-- **Speck-based**: Leverages the ARX (Addition-Rotation-XOR) design of the Speck block cipher.
-- **no_std**: Zero dependencies, suitable for embedded systems.
-- **On-demand Key Schedule**: Generates round keys on the fly to minimize memory usage.
+I can't talk for others, but the algorithm exists at all because I want to derive USB Serial Number from 96-bit unique chip IDs on STM32 microcontrollers.
+Permutation is more suitable than hash, because the result will inherit the guaranteed uniqueness from the input.
+
+## The algorithm
+
+The algorithm is based on the Speck block cipher with a few modifications.
+It run Speck-64/128 in 3-word Generalized Feistel Network and bump the round numbers to address slower diffusion from adding a third lane.
+
+## The security
+
+I am not a cryptographer and I can't vouch for cryptographic properties. But these are the promises:
+- It will pass the avalanche and random distribution tests.
+- It is a permutation function, it will map 96-bit input to 96-bit output one-to-one, no collision.
+- It will prevent anyone from reverse engineering the input from the output without the key.
+- It will not prevent side channel attacks; someone who could do that is better off breaking into the chip and read the key from Flash memory.
+- The promises hold only when you don't mess up the key generation.
+
+## Awareness
+
+I hope no one use this to encrypt sensitive data. As we already have Xoodyak for AEAD, KDF, MAC, and what not. There are good reasons why there is no mainstream block ciphers operating on 96-bit block.
+
+## The why
+
+### Why starting with Speck-64/128? Why not just use Speck-96/144?
+
+Word size: Speck64 has 32-bit word size.
+
+### Why keyed permutation?
+
+So that my USB Serial Number isn't the same as yours, if you happen to use this permutation for the same purpose.
+
+### Why 32 rounds?
+
+Sine we have 3 lanes and we leave one out in each round, only doing linear operation on the leftover, diffusion is slower. More round number is required to compensate.
 
 ## Usage
 
-Add this to your `Cargo.toml`:
-
-```toml
-[dependencies]
-scintia-96 = { path = "..." }
+```bash
+cargo add scintia-96
 ```
 
-### Example
+### Quick Start
 
 ```rust
 use scintia_96::Scintia96;
 
-fn main() {
-    let key = [0x01234567, 0x89abcdef, 0x01234567, 0x89abcdef];
-    let block = [0xdeadbeef, 0xcafebabe, 0xfacefeed];
+const KEY: [u32; 4] = [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10];
+const PERMUTATION: Scintia96 = Scintia96::new(KEY);
 
-    let cipher = Scintia96::new(key);
-    let ciphertext = cipher.permute(block);
-    
-    println!("Ciphertext: {:?}", ciphertext);
+fn main() {
+    let block = [0xdeadbeef, 0xcafebabe, 0xfacefeed];
+    let permuted = PERMUTATION.permute(block);
+    println!("Permuted: {:?}", permuted);
 }
 ```
-
-## Algorithm Details
-
-The permutation uses 32 rounds. Each round consists of:
-1. A standard Speck round function applied to the first two words.
-2. XORing the result of the second word into the third word.
-3. A word-level left rotation (shuffle) of the entire state.
-
-Round keys are generated using the standard Speck-128 key schedule logic, adapted for the 32 rounds of this permutation.
 
 ## Keygen
 
