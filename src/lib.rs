@@ -29,24 +29,35 @@ impl Scintia96 {
         let mut b = block[1];
         let mut c = block[2];
 
-        let key_schedule = SpeckKeySchedule::new(self.key);
+        let mut key_schedule = SpeckKeySchedule::new(self.key);
 
-        for r_key in key_schedule {
-            // 1. Speck Round Function on (A, B)
-            a = (a.rotate_right(8).wrapping_add(b)) ^ r_key;
-            b = b.rotate_left(3) ^ a;
-
-            // 2. Diffuse into C (GFN Logic)
-            c ^= b;
-
-            // 3. Word Shuffle: (A, B, C) -> (B, C, A)
-            let temp = a;
-            a = b;
-            b = c;
-            c = temp;
+        // Unroll by 3 rounds per iteration
+        for _ in 0..(ROUNDS / 3) {
+            Self::round_step(&mut key_schedule, &mut a, &mut b, &mut c);
+            Self::round_step(&mut key_schedule, &mut b, &mut c, &mut a);
+            Self::round_step(&mut key_schedule, &mut c, &mut a, &mut b);
         }
 
-        [a, b, c]
+        match ROUNDS % 3 {
+            1 => {
+                Self::round_step(&mut key_schedule, &mut a, &mut b, &mut c);
+                [b, c, a]
+            }
+            2 => {
+                Self::round_step(&mut key_schedule, &mut a, &mut b, &mut c);
+                Self::round_step(&mut key_schedule, &mut b, &mut c, &mut a);
+                [c, a, b]
+            }
+            _ => [a, b, c],
+        }
+    }
+
+    #[inline(always)]
+    fn round_step(key_schedule: &mut SpeckKeySchedule, x: &mut u32, y: &mut u32, z: &mut u32) {
+        let k = key_schedule.next().unwrap();
+        *x = (x.rotate_right(8).wrapping_add(*y)) ^ k;
+        *y = y.rotate_left(3) ^ *x;
+        *z ^= *y;
     }
 }
 
@@ -73,10 +84,6 @@ impl Iterator for SpeckKeySchedule {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if ROUNDS <= self.round {
-            return None;
-        }
-
         let current_key = self.k;
 
         // Key Schedule Update (Speck standard logic)
