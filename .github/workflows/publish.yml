@@ -11,6 +11,7 @@ jobs:
   publish:
     name: Test, Publish & Sync
     runs-on: ubuntu-latest
+    environment: workflow
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,10 +38,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Commit and Push back to the default branch
+          # Commit and Push back to the default branch only if there are changes
           git add Cargo.toml
-          git commit -m "chore: bump version to $VERSION [skip ci]"
-          git push origin HEAD:${{ github.event.repository.default_branch }}
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: bump version to $VERSION [skip ci]"
+            git push origin HEAD:${{ github.event.repository.default_branch }}
+          else
+            echo "Version in Cargo.toml is already $VERSION. Skipping commit."
+          fi
 
       - name: Publish to Crates.io
         run: cargo publish --token ${{ secrets.CRATES_TOKEN }}
