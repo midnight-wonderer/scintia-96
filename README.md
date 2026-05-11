@@ -43,3 +43,22 @@ The permutation uses 32 rounds. Each round consists of:
 3. A word-level left rotation (shuffle) of the entire state.
 
 Round keys are generated using the standard Speck-128 key schedule logic, adapted for the 32 rounds of this permutation.
+
+## Keygen
+
+You can generate a compatible 128-bit key for use in your Rust code using the following one-liners.
+
+### Random Generation
+Generate a unique, cryptographically secure random key using `/dev/urandom`:
+
+```bash
+printf "const KEY: [u32; 4] = [%s, %s, %s, %s];\n" $(head -c 16 /dev/urandom | od -An -vtx4 | awk '{for(i=1;i<=NF;i++) print "0x"$i}')
+```
+
+### Deterministic Derivation
+Derive a key from a specific string (key material) using SHA-512. This is useful for creating specific variants or reproducible configurations:
+
+```bash
+key_material="my variant"
+(echo -n "scintia-96:key:$key_material" | sha512sum 2>/dev/null || echo -n "scintia-96:key:$key_material" | shasum -a 512) | awk -v w="$key_material" '{h=$1; printf "// derive_key(\"%s\")\nconst KEY: [u32; 4] = [0x%s, 0x%s, 0x%s, 0x%s];\n", w, substr(h,1,8), substr(h,9,8), substr(h,17,8), substr(h,25,8)}'
+```
