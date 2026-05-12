@@ -11,3 +11,8 @@ keywords = ["scintia-96", "cryptography", "permutation", "no_std", "speck"]
 categories = ["cryptography", "no-std", "embedded"]
 
 [dependencies]
+cipher = { version = "0.4", optional = true }
+
+[features]
+default = []
+cipher = ["dep:cipher"]

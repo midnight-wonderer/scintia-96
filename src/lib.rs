@@ -8,6 +8,13 @@
 //! (such as a hardware unique ID) to a 96-bit output (such as a USB serial number),
 //! ensuring that uniqueness is preserved without collisions.
 //!
+//!
+//! ## Features
+//!
+//! - **`cipher`** (optional): Enables the `BlockCipher` implementation for server environments.
+//!   This includes the `Scintia96Cipher` struct which precomputes the key schedule for efficiency
+//!   and enables **reversing (decrypting)** the permutation.
+//!
 //! ## Example
 //!
 //! ```rust
@@ -27,6 +34,12 @@
 mod key_schedule;
 mod scintia_96;
 
+#[cfg(feature = "cipher")]
+mod block_cipher;
+
 pub use scintia_96::Scintia96;
+
+#[cfg(feature = "cipher")]
+pub use block_cipher::Scintia96Cipher;
 
 pub(crate) const ROUNDS: u32 = 32;
