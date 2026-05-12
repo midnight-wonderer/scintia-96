@@ -1,0 +1,32 @@
+name: CI
+ 
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+ 
+jobs:
+  test:
+    name: Test and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+ 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+ 
+      - name: Install just
+        uses: taiki-e/install-action@just
+ 
+      - name: Check formatting
+        run: just fmt -- --check
+ 
+      - name: Run lints
+        run: just lint
+ 
+      - name: Run all tests
+        run: just test-all
