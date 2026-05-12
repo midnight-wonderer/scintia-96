@@ -5,8 +5,8 @@ use cipher::{
     inout::InOut,
 };
 
-use crate::ROUNDS;
 use crate::key_schedule::{SpeckKeySchedule, decrypt_step, encrypt_step};
+use crate::{ROUNDS, Scintia96Permuter, Scintia96Unpermuter, utils};
 
 type InoutBlock<'a, 'b, T> = InOut<'a, 'b, cipher::Block<T>>;
 
@@ -14,19 +14,17 @@ type InoutBlock<'a, 'b, T> = InOut<'a, 'b, cipher::Block<T>>;
 ///
 /// Implements the `BlockCipher` trait from the `cipher` crate.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use scintia_96::Scintia96Cipher;
 ///
-/// // 128-bit key (4 x u32)
 /// let key = [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10];
-///
-/// // Inherent usage (doesn't require importing traits)
 /// let cipher = Scintia96Cipher::new(key);
 ///
-/// // Trait usage (via cipher::KeyInit, if you have it in scope)
-/// // let cipher = Scintia96Cipher::new(generic_array_key);
+/// let mut block = [0u8; 12];
+/// cipher.permute_block(&mut block);
+/// cipher.unpermute_block(&mut block);
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Scintia96Cipher {
@@ -49,6 +47,92 @@ impl Scintia96Cipher {
         Self {
             round_keys: k_schedule,
         }
+    }
+
+    /// Permutes a 96-bit block represented as three 32-bit words.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// # use scintia_96::Scintia96Cipher;
+    /// # let key = [0u32; 4];
+    /// # let cipher = Scintia96Cipher::new(key);
+    /// let block = [0xdeadbeef, 0xcafebabe, 0xfacefeed];
+    /// let permuted = cipher.permute(block);
+    /// ```
+    #[inline]
+    pub fn permute(&self, block: [u32; 3]) -> [u32; 3] {
+        Scintia96Permuter::permute(self, block)
+    }
+
+    /// Permutes a 96-bit block in place.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// # use scintia_96::Scintia96Cipher;
+    /// # let key = [0u32; 4];
+    /// # let cipher = Scintia96Cipher::new(key);
+    /// let mut block = [0u8; 12];
+    /// cipher.permute_block(&mut block);
+    /// ```
+    #[inline]
+    pub fn permute_block(&self, block: &mut [u8; 12]) {
+        Scintia96Permuter::permute_block(self, block)
+    }
+
+    /// Un-permutes a 96-bit block represented as three 32-bit words.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// # use scintia_96::Scintia96Cipher;
+    /// # let key = [0u32; 4];
+    /// # let cipher = Scintia96Cipher::new(key);
+    /// let block = [0xdeadbeef, 0xcafebabe, 0xfacefeed];
+    /// let unpermuted = cipher.unpermute(block);
+    /// ```
+    #[inline]
+    pub fn unpermute(&self, block: [u32; 3]) -> [u32; 3] {
+        Scintia96Unpermuter::unpermute(self, block)
+    }
+
+    /// Un-permutes a 96-bit block in place.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// # use scintia_96::Scintia96Cipher;
+    /// # let key = [0u32; 4];
+    /// # let cipher = Scintia96Cipher::new(key);
+    /// let mut block = [0u8; 12];
+    /// cipher.unpermute_block(&mut block);
+    /// ```
+    #[inline]
+    pub fn unpermute_block(&self, block: &mut [u8; 12]) {
+        Scintia96Unpermuter::unpermute_block(self, block)
+    }
+}
+
+impl Scintia96Permuter for Scintia96Cipher {
+    /// Permutes a 96-bit block using the precomputed key schedule.
+    ///
+    /// This is the inherent equivalent of `Scintia96::permute`.
+    fn permute(&self, block: [u32; 3]) -> [u32; 3] {
+        Scintia96EncryptBackend {
+            round_keys: &self.round_keys,
+        }
+        .permute(block)
+    }
+}
+
+impl Scintia96Unpermuter for Scintia96Cipher {
+    /// Un-permutes a 96-bit block using the precomputed key schedule.
+    fn unpermute(&self, block: [u32; 3]) -> [u32; 3] {
+        Scintia96DecryptBackend {
+            round_keys: &self.round_keys,
+        }
+        .unpermute(block)
     }
 }
 
@@ -93,6 +177,29 @@ struct Scintia96EncryptBackend<'a> {
     round_keys: &'a [u32; ROUNDS as usize],
 }
 
+impl<'a> Scintia96Permuter for Scintia96EncryptBackend<'a> {
+    fn permute(&self, block: [u32; 3]) -> [u32; 3] {
+        let mut a = block[0];
+        let mut b = block[1];
+        let mut c = block[2];
+
+        for i in 0..ROUNDS as usize {
+            let k = self.round_keys[i];
+            match i % 3 {
+                0 => encrypt_step(k, &mut a, &mut b, &mut c),
+                1 => encrypt_step(k, &mut b, &mut c, &mut a),
+                _ => encrypt_step(k, &mut c, &mut a, &mut b),
+            }
+        }
+
+        match ROUNDS % 3 {
+            1 => [b, c, a],
+            2 => [c, a, b],
+            _ => [a, b, c],
+        }
+    }
+}
+
 impl<'a> BlockSizeUser for Scintia96EncryptBackend<'a> {
     type BlockSize = U12;
 }
@@ -104,35 +211,35 @@ impl<'a> ParBlocksSizeUser for Scintia96EncryptBackend<'a> {
 impl<'a> BlockBackend for Scintia96EncryptBackend<'a> {
     #[inline]
     fn proc_block(&mut self, mut block: InoutBlock<'_, '_, Self>) {
-        let b = block.get_in();
-        let mut a = u32::from_le_bytes(b[0..4].try_into().unwrap());
-        let mut b_word = u32::from_le_bytes(b[4..8].try_into().unwrap());
-        let mut c = u32::from_le_bytes(b[8..12].try_into().unwrap());
-
-        for i in 0..ROUNDS as usize {
-            let k = self.round_keys[i];
-            match i % 3 {
-                0 => encrypt_step(k, &mut a, &mut b_word, &mut c),
-                1 => encrypt_step(k, &mut b_word, &mut c, &mut a),
-                _ => encrypt_step(k, &mut c, &mut a, &mut b_word),
-            }
-        }
-
-        let out = match ROUNDS % 3 {
-            1 => [b_word, c, a],
-            2 => [c, a, b_word],
-            _ => [a, b_word, c],
-        };
-
-        let out_block = block.get_out();
-        out_block[0..4].copy_from_slice(&out[0].to_le_bytes());
-        out_block[4..8].copy_from_slice(&out[1].to_le_bytes());
-        out_block[8..12].copy_from_slice(&out[2].to_le_bytes());
+        let words = utils::bytes_to_words(block.get_in().as_ref());
+        let out = self.permute(words);
+        utils::words_to_bytes(out, block.get_out().as_mut());
     }
 }
 
 struct Scintia96DecryptBackend<'a> {
     round_keys: &'a [u32; ROUNDS as usize],
+}
+
+impl<'a> Scintia96Unpermuter for Scintia96DecryptBackend<'a> {
+    fn unpermute(&self, block: [u32; 3]) -> [u32; 3] {
+        let (mut a, mut b, mut c) = match ROUNDS % 3 {
+            1 => (block[2], block[0], block[1]),
+            2 => (block[1], block[2], block[0]),
+            _ => (block[0], block[1], block[2]),
+        };
+
+        for i in (0..ROUNDS as usize).rev() {
+            let k = self.round_keys[i];
+            match i % 3 {
+                0 => decrypt_step(k, &mut a, &mut b, &mut c),
+                1 => decrypt_step(k, &mut b, &mut c, &mut a),
+                _ => decrypt_step(k, &mut c, &mut a, &mut b),
+            }
+        }
+
+        [a, b, c]
+    }
 }
 
 impl<'a> BlockSizeUser for Scintia96DecryptBackend<'a> {
@@ -146,30 +253,9 @@ impl<'a> ParBlocksSizeUser for Scintia96DecryptBackend<'a> {
 impl<'a> BlockBackend for Scintia96DecryptBackend<'a> {
     #[inline]
     fn proc_block(&mut self, mut block: InoutBlock<'_, '_, Self>) {
-        let b = block.get_in();
-        let word0 = u32::from_le_bytes(b[0..4].try_into().unwrap());
-        let word1 = u32::from_le_bytes(b[4..8].try_into().unwrap());
-        let word2 = u32::from_le_bytes(b[8..12].try_into().unwrap());
-
-        let (mut a, mut b_word, mut c) = match ROUNDS % 3 {
-            1 => (word2, word0, word1),
-            2 => (word1, word2, word0),
-            _ => (word0, word1, word2),
-        };
-
-        for i in (0..ROUNDS as usize).rev() {
-            let k = self.round_keys[i];
-            match i % 3 {
-                0 => decrypt_step(k, &mut a, &mut b_word, &mut c),
-                1 => decrypt_step(k, &mut b_word, &mut c, &mut a),
-                _ => decrypt_step(k, &mut c, &mut a, &mut b_word),
-            }
-        }
-
-        let out_block = block.get_out();
-        out_block[0..4].copy_from_slice(&a.to_le_bytes());
-        out_block[4..8].copy_from_slice(&b_word.to_le_bytes());
-        out_block[8..12].copy_from_slice(&c.to_le_bytes());
+        let words = utils::bytes_to_words(block.get_in().as_ref());
+        let out = self.unpermute(words);
+        utils::words_to_bytes(out, block.get_out().as_mut());
     }
 }
 
