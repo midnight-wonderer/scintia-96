@@ -35,6 +35,7 @@
 
 mod key_schedule;
 mod scintia_96;
+pub(crate) mod utils;
 
 #[cfg(feature = "cipher")]
 mod block_cipher;
