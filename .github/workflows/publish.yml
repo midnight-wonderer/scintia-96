@@ -21,8 +21,14 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run tests
-        run: cargo test
+      - name: Install just
+        uses: taiki-e/install-action@just
+
+      - name: Run lints
+        run: just lint
+
+      - name: Run all tests
+        run: just test-all
 
       - name: Set version and Sync
         run: |
