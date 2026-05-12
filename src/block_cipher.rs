@@ -36,8 +36,8 @@ impl KeyInit for Scintia96Cipher {
         }
 
         let mut schedule_iter = SpeckKeySchedule::new(key_words);
-        for i in 0..ROUNDS as usize {
-            k_schedule[i] = schedule_iter.next().unwrap();
+        for key in &mut k_schedule {
+            *key = schedule_iter.next().unwrap();
         }
 
         Self {
