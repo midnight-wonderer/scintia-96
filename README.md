@@ -17,6 +17,10 @@ Getting started is easy! Add it to your project:
 cargo add scintia-96
 ```
 
+### Features
+
+- **`cipher`** (optional): Enables the `BlockCipher` implementation for server-side environments. This allows use with the `cipher` crate's traits, provides a precomputed key schedule for better performance, and **enables reversing (decrypting)** the permutation.
+
 ### Basic Usage
 
 ```rust
@@ -42,9 +46,12 @@ fn main() {
 
 ## 🎯 Why Scintia-96?
 
-### The Use Case
+### The Use Cases
 
-Ever needed to derive a **USB serial number** from a 96-bit unique chip ID (like those on STM32 microcontrollers)? That's exactly why Scintia-96 exists! 🛠️
+Scintia-96 is perfect for situations where you need to transform a 96-bit value while preserving its uniqueness:
+
+- **Chip ID Masking:** Scintia-96 was originally created to **derive a USB serial number** from a 96-bit unique chip ID (such as those on STM32 microcontrollers) while preserving uniqueness.
+- **ID Obfuscation:** MongoDB **BSON ObjectId**s are 96-bit values containing metadata such as timestamps and process identifiers. Scintia-96 can mask this information while preserving the useful properties of the ID. 🍃
 
 While you could use a hash function, a **permutation** is often more suitable for cases like this. Since it's a one-to-one mapping, the output inherits the guaranteed uniqueness of the input, meaning there can never be a collision.
 
@@ -73,7 +80,9 @@ I'm a developer, not a cryptographer, so I can't vouch for its resistance to cry
 
 ### ⚠️ A Note on Safety
 
-**Please don't use this to encrypt sensitive data.** For AEAD, KDF, or MAC use cases, stick to well-established primitives like **Xoodyak**. Again, Scintia-96 is a keyed permutation, not a block cipher!
+**Please don't use this to encrypt sensitive data.** For AEAD, KDF, or MAC use cases, stick to well-established primitives like **Xoodyak**. 
+
+While we provide an optional `BlockCipher` implementation for convenience in server environments, Scintia-96 is designed primarily as a keyed permutation for identity masking. It has not undergone the rigorous cryptanalysis required for a general-purpose block cipher.
 
 ---
 
