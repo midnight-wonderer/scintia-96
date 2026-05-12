@@ -1,5 +1,5 @@
-use crate::ROUNDS;
 use crate::key_schedule::{SpeckKeySchedule, encrypt_step};
+use crate::{ROUNDS, Scintia96Permuter};
 
 /// A Scintia-96 instance for performing keyed permutations.
 #[derive(Debug, Clone, Copy)]
@@ -12,23 +12,56 @@ impl Scintia96 {
     ///
     /// The key is used to derive round keys on-the-fly during each permutation.
     /// This is the most memory-efficient way to use Scintia-96, ideal for microcontrollers.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use scintia_96::Scintia96;
+    ///
+    /// let key = [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10];
+    /// let cipher = Scintia96::new(key);
+    /// ```
     #[inline]
     pub const fn new(key: [u32; 4]) -> Self {
         Self { key }
     }
 
-    /// Permutes a 96-bit block using the provided key.
+    /// Permutes a 96-bit block represented as three 32-bit words.
     ///
-    /// The block is represented as three 32-bit words. Since Scintia-96 is a
-    /// true permutation, the mapping is one-to-one and guaranteed to be collision-free.
+    /// ## Example
     ///
-    /// # Example
-    /// ```
+    /// ```rust
     /// # use scintia_96::Scintia96;
-    /// let cipher = Scintia96::new([0, 0, 0, 0]);
-    /// let output = cipher.permute([1, 2, 3]);
+    /// # let key = [0u32; 4];
+    /// # let cipher = Scintia96::new(key);
+    /// let block = [0xdeadbeef, 0xcafebabe, 0xfacefeed];
+    /// let permuted = cipher.permute(block);
     /// ```
+    #[inline]
     pub fn permute(&self, block: [u32; 3]) -> [u32; 3] {
+        Scintia96Permuter::permute(self, block)
+    }
+
+    /// Permutes a 96-bit block in place.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// # use scintia_96::Scintia96;
+    /// # let key = [0u32; 4];
+    /// # let cipher = Scintia96::new(key);
+    /// let mut block = [0u8; 12];
+    /// cipher.permute_block(&mut block);
+    /// ```
+    #[inline]
+    pub fn permute_block(&self, block: &mut [u8; 12]) {
+        Scintia96Permuter::permute_block(self, block)
+    }
+}
+
+impl Scintia96Permuter for Scintia96 {
+    /// Permutes a 96-bit block using the provided key.
+    fn permute(&self, block: [u32; 3]) -> [u32; 3] {
         let mut a = block[0];
         let mut b = block[1];
         let mut c = block[2];
@@ -55,7 +88,9 @@ impl Scintia96 {
             _ => [a, b, c],
         }
     }
+}
 
+impl Scintia96 {
     #[inline(always)]
     fn round_step(key_schedule: &mut SpeckKeySchedule, x: &mut u32, y: &mut u32, z: &mut u32) {
         let k = key_schedule.next().unwrap();

@@ -27,11 +27,13 @@
 //! const PERMUTATION: Scintia96 = Scintia96::new(KEY);
 //!
 //! fn main() {
-//!     // 96-bit block (3 x u32)
-//!     let block = [0xdeadbeef, 0xcafebabe, 0xfacefeed];
-//!     let permuted = PERMUTATION.permute(block);
+//!     // 96-bit block as raw bytes
+//!     let mut block = [0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xba, 0xbe, 0xfa, 0xce, 0xfe, 0xed];
+//!     PERMUTATION.permute_block(&mut block);
 //! }
 //! ```
+//!
+//! For more advanced usage or server-side environments, enable the `cipher` feature to use `Scintia96Cipher`.
 
 mod key_schedule;
 mod scintia_96;
