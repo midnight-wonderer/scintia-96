@@ -1,6 +1,6 @@
 [package]
 name = "scintia-96"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Sarun Rattanasiri"]
 description = "A lightweight, keyed 96-bit permutation based on the Speck cipher, designed for unique ID derivation."
