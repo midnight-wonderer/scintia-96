@@ -266,34 +266,24 @@ mod tests {
 
     #[test]
     fn test_scintia96cipher_consistency() {
-        use cipher::{BlockDecrypt, BlockEncrypt, KeyInit, generic_array::GenericArray};
-
-        let key_bytes = [0u8; 16];
-        let key = GenericArray::from_slice(&key_bytes);
+        let key = [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10];
         let cipher = Scintia96Cipher::new(key);
 
         let mut block = [0u8; 12];
         let original = block;
 
-        cipher.encrypt_block(GenericArray::from_mut_slice(&mut block));
+        cipher.permute_block(&mut block);
         assert_ne!(block, original);
 
-        cipher.decrypt_block(GenericArray::from_mut_slice(&mut block));
+        cipher.unpermute_block(&mut block);
         assert_eq!(block, original);
     }
 
     #[test]
     fn test_scintia96cipher_matches_scintia96() {
-        use cipher::{BlockEncrypt, KeyInit, generic_array::GenericArray};
-
         let key_u32: [u32; 4] = [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10];
-        let mut key_bytes = [0u8; 16];
-        for (i, &k) in key_u32.iter().enumerate() {
-            key_bytes[i * 4..(i + 1) * 4].copy_from_slice(&k.to_le_bytes());
-        }
-
         let scintia = Scintia96::new(key_u32);
-        let cipher = Scintia96Cipher::new(GenericArray::from_slice(&key_bytes));
+        let cipher = Scintia96Cipher::new(key_u32);
 
         let input_u32: [u32; 3] = [0xdeadbeef, 0xcafebabe, 0xfacefeed];
         let mut input_bytes = [0u8; 12];
@@ -308,7 +298,7 @@ mod tests {
         }
 
         let mut block = input_bytes;
-        cipher.encrypt_block(GenericArray::from_mut_slice(&mut block));
+        cipher.permute_block(&mut block);
 
         assert_eq!(block, expected_bytes);
     }
