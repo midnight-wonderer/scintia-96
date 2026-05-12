@@ -4,7 +4,7 @@ use crate::key_schedule::{SpeckKeySchedule, encrypt_step};
 /// A Scintia-96 instance for performing keyed permutations.
 #[derive(Debug, Clone, Copy)]
 pub struct Scintia96 {
-    pub(crate) key: [u32; 4],
+    key: [u32; 4],
 }
 
 impl Scintia96 {

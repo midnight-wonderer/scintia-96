@@ -3,9 +3,9 @@
 /// This implements the standard Speck key schedule update logic,
 /// producing 32-bit round keys from a 128-bit master key.
 pub(crate) struct SpeckKeySchedule {
-    pub(crate) k: u32,
-    pub(crate) l: [u32; 3],
-    pub(crate) round: u32,
+    k: u32,
+    l: [u32; 3],
+    round: u32,
 }
 
 impl SpeckKeySchedule {

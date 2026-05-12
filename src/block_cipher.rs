@@ -18,31 +18,37 @@ pub struct Scintia96Cipher {
     round_keys: [u32; ROUNDS as usize],
 }
 
-impl KeySizeUser for Scintia96Cipher {
-    type KeySize = U16;
-}
-
-impl KeyInit for Scintia96Cipher {
+impl Scintia96Cipher {
     /// Creates a new Scintia-96 cipher instance from a 128-bit key.
     ///
     /// This constructor precomputes the entire key schedule (32 round keys),
     /// allowing for much faster encryption and decryption in environments
     /// where memory is less constrained than a typical microcontroller.
-    fn new(key: &cipher::Key<Self>) -> Self {
+    pub fn new(key: [u32; 4]) -> Self {
         let mut k_schedule = [0u32; ROUNDS as usize];
-        let mut key_words = [0u32; 4];
-        for (i, chunk) in key.chunks_exact(4).enumerate() {
-            key_words[i] = u32::from_le_bytes(chunk.try_into().unwrap());
-        }
-
-        let mut schedule_iter = SpeckKeySchedule::new(key_words);
-        for key in &mut k_schedule {
-            *key = schedule_iter.next().unwrap();
+        let mut schedule_iter = SpeckKeySchedule::new(key);
+        for key_word in &mut k_schedule {
+            *key_word = schedule_iter.next().unwrap();
         }
 
         Self {
             round_keys: k_schedule,
         }
+    }
+}
+
+impl KeySizeUser for Scintia96Cipher {
+    type KeySize = U16;
+}
+
+impl KeyInit for Scintia96Cipher {
+    fn new(key: &cipher::Key<Self>) -> Self {
+        let mut key_words = [0u32; 4];
+        for (i, chunk) in key.chunks_exact(4).enumerate() {
+            key_words[i] = u32::from_le_bytes(chunk.try_into().unwrap());
+        }
+
+        Self::new(key_words)
     }
 }
 
