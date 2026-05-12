@@ -13,6 +13,21 @@ type InoutBlock<'a, 'b, T> = InOut<'a, 'b, cipher::Block<T>>;
 /// A Scintia-96 instance optimized for server environments with precomputed key schedule.
 ///
 /// Implements the `BlockCipher` trait from the `cipher` crate.
+///
+/// ## Example
+///
+/// ```rust
+/// use scintia_96::Scintia96Cipher;
+///
+/// // 128-bit key (4 x u32)
+/// let key = [0x01020304, 0x05060708, 0x090a0b0c, 0x0d0e0f10];
+///
+/// // Inherent usage (doesn't require importing traits)
+/// let cipher = Scintia96Cipher::new(key);
+///
+/// // Trait usage (via cipher::KeyInit, if you have it in scope)
+/// // let cipher = Scintia96Cipher::new(generic_array_key);
+/// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Scintia96Cipher {
     round_keys: [u32; ROUNDS as usize],
