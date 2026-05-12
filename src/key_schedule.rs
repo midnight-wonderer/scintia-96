@@ -50,6 +50,7 @@ pub(crate) fn encrypt_step(k: u32, x: &mut u32, y: &mut u32, z: &mut u32) {
     *z ^= *y;
 }
 
+#[allow(dead_code)]
 #[inline(always)]
 pub(crate) fn decrypt_step(k: u32, x: &mut u32, y: &mut u32, z: &mut u32) {
     *z ^= *y;

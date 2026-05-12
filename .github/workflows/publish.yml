@@ -63,4 +63,6 @@ jobs:
           fi
 
       - name: Publish to Crates.io
-        run: cargo publish --token ${{ secrets.CRATES_TOKEN }}
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
