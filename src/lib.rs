@@ -45,4 +45,36 @@ pub use scintia_96::Scintia96;
 #[cfg(feature = "cipher")]
 pub use block_cipher::Scintia96Cipher;
 
+/// A trait for types that can perform the Scintia-96 96-bit keyed permutation.
+///
+/// Most users should use the inherent methods on [`Scintia96`] or [`Scintia96Cipher`]
+/// instead of this trait directly.
+pub trait Scintia96Permuter {
+    /// Permutes a 96-bit block represented as three 32-bit words.
+    fn permute(&self, block: [u32; 3]) -> [u32; 3];
+
+    /// Permutes a 96-bit block in place.
+    fn permute_block(&self, block: &mut [u8; 12]) {
+        let words = utils::bytes_to_words(block);
+        let out = self.permute(words);
+        utils::words_to_bytes(out, block);
+    }
+}
+
+/// A trait for types that can perform the inverse Scintia-96 96-bit keyed permutation.
+///
+/// Most users should use the inherent methods on [`Scintia96Cipher`] instead of this
+/// trait directly.
+pub trait Scintia96Unpermuter {
+    /// Un-permutes a 96-bit block represented as three 32-bit words.
+    fn unpermute(&self, block: [u32; 3]) -> [u32; 3];
+
+    /// Un-permutes a 96-bit block in place.
+    fn unpermute_block(&self, block: &mut [u8; 12]) {
+        let words = utils::bytes_to_words(block);
+        let out = self.unpermute(words);
+        utils::words_to_bytes(out, block);
+    }
+}
+
 pub(crate) const ROUNDS: u32 = 32;
