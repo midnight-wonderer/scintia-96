@@ -12,7 +12,7 @@
 //!
 //! ## Features
 //!
-//! - **`cipher`** (optional): Enables the `BlockCipher` implementation for server environments.
+//! - **`cipher`** (optional): Enables the RustCrypto cipher traits implementation for server environments.
 //!   This includes the `Scintia96Cipher` struct which precomputes the key schedule for efficiency
 //!   and enables **reversing (decrypting)** the permutation.
 //!

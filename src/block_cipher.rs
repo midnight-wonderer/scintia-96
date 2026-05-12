@@ -1,5 +1,6 @@
 use cipher::{
-    BlockBackend, BlockCipher, BlockDecrypt, BlockEncrypt, BlockSizeUser, KeyInit, KeySizeUser,
+    BlockCipherDecBackend, BlockCipherDecClosure, BlockCipherDecrypt, BlockCipherEncBackend,
+    BlockCipherEncClosure, BlockCipherEncrypt, BlockSizeUser, KeyInit, KeySizeUser,
     ParBlocksSizeUser,
     consts::{U1, U12, U16},
     inout::InOut,
@@ -155,19 +156,17 @@ impl BlockSizeUser for Scintia96Cipher {
     type BlockSize = U12;
 }
 
-impl BlockCipher for Scintia96Cipher {}
-
-impl BlockEncrypt for Scintia96Cipher {
-    fn encrypt_with_backend(&self, f: impl cipher::BlockClosure<BlockSize = Self::BlockSize>) {
-        f.call(&mut Scintia96EncryptBackend {
+impl BlockCipherEncrypt for Scintia96Cipher {
+    fn encrypt_with_backend(&self, f: impl BlockCipherEncClosure<BlockSize = Self::BlockSize>) {
+        f.call(&Scintia96EncryptBackend {
             round_keys: &self.round_keys,
         })
     }
 }
 
-impl BlockDecrypt for Scintia96Cipher {
-    fn decrypt_with_backend(&self, f: impl cipher::BlockClosure<BlockSize = Self::BlockSize>) {
-        f.call(&mut Scintia96DecryptBackend {
+impl BlockCipherDecrypt for Scintia96Cipher {
+    fn decrypt_with_backend(&self, f: impl BlockCipherDecClosure<BlockSize = Self::BlockSize>) {
+        f.call(&Scintia96DecryptBackend {
             round_keys: &self.round_keys,
         })
     }
@@ -208,9 +207,9 @@ impl<'a> ParBlocksSizeUser for Scintia96EncryptBackend<'a> {
     type ParBlocksSize = U1;
 }
 
-impl<'a> BlockBackend for Scintia96EncryptBackend<'a> {
+impl<'a> BlockCipherEncBackend for Scintia96EncryptBackend<'a> {
     #[inline]
-    fn proc_block(&mut self, mut block: InoutBlock<'_, '_, Self>) {
+    fn encrypt_block(&self, mut block: InoutBlock<'_, '_, Self>) {
         let words = utils::bytes_to_words(block.get_in().as_ref());
         let out = self.permute(words);
         utils::words_to_bytes(out, block.get_out().as_mut());
@@ -250,9 +249,9 @@ impl<'a> ParBlocksSizeUser for Scintia96DecryptBackend<'a> {
     type ParBlocksSize = U1;
 }
 
-impl<'a> BlockBackend for Scintia96DecryptBackend<'a> {
+impl<'a> BlockCipherDecBackend for Scintia96DecryptBackend<'a> {
     #[inline]
-    fn proc_block(&mut self, mut block: InoutBlock<'_, '_, Self>) {
+    fn decrypt_block(&self, mut block: InoutBlock<'_, '_, Self>) {
         let words = utils::bytes_to_words(block.get_in().as_ref());
         let out = self.unpermute(words);
         utils::words_to_bytes(out, block.get_out().as_mut());
