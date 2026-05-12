@@ -1,3 +1,6 @@
+pub(crate) const ROT_ALPHA: u32 = 8;
+pub(crate) const ROT_BETA: u32 = 3;
+
 /// Internal iterator for generating Scintia-96 round keys.
 ///
 /// This implements the standard Speck key schedule update logic,
@@ -32,8 +35,8 @@ impl Iterator for SpeckKeySchedule {
         let i = self.round;
         let l_idx = (i as usize) % 3;
 
-        let new_l = (self.k.wrapping_add(self.l[l_idx].rotate_right(8))) ^ i;
-        let new_k = self.k.rotate_left(3) ^ new_l;
+        let new_l = (self.k.wrapping_add(self.l[l_idx].rotate_right(ROT_ALPHA))) ^ i;
+        let new_k = self.k.rotate_left(ROT_BETA) ^ new_l;
 
         self.l[l_idx] = new_l;
         self.k = new_k;
@@ -45,15 +48,15 @@ impl Iterator for SpeckKeySchedule {
 
 #[inline(always)]
 pub(crate) fn encrypt_step(k: u32, x: &mut u32, y: &mut u32, z: &mut u32) {
-    *x = (x.rotate_right(8).wrapping_add(*y)) ^ k;
-    *y = y.rotate_left(3) ^ *x;
+    *x = (x.rotate_right(ROT_ALPHA).wrapping_add(*y)) ^ k;
+    *y = y.rotate_left(ROT_BETA) ^ *x;
     *z ^= *y;
 }
 
-#[allow(dead_code)]
+#[cfg(feature = "cipher")]
 #[inline(always)]
 pub(crate) fn decrypt_step(k: u32, x: &mut u32, y: &mut u32, z: &mut u32) {
     *z ^= *y;
-    *y = (*y ^ *x).rotate_right(3);
-    *x = ((*x ^ k).wrapping_sub(*y)).rotate_left(8);
+    *y = (*y ^ *x).rotate_right(ROT_BETA);
+    *x = ((*x ^ k).wrapping_sub(*y)).rotate_left(ROT_ALPHA);
 }
