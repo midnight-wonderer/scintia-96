@@ -64,7 +64,7 @@ By using a key, you ensure that your derived result is unique to *your* use case
 ## 🛠️ The Algorithm
 
 Scintia-96 is based on the **Speck** block cipher (specifically Speck-64/128) with a few tweaks:
-- **3-word GFN:** It operates on three 32-bit words using a Generalized Feistel Network.
+- **3-word GFN:** It operates on three 32-bit words using a Generalized Feistel Network. This native 32-bit design is highly efficient on common microcontrollers compared to 96-bit alternatives like Speck-96/144, which operate on 48-bit words. 🏎️
 - **32 Rounds:** Since we have 3 lanes and leave one out each round, diffusion is slightly slower. We bumped the round count to 32 to compensate and ensure robust mixing. 🌪️
 
 ---
