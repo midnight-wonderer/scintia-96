@@ -40,12 +40,15 @@ jobs:
           # Update Cargo.toml
           sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
           
+          # Update Cargo.lock to match
+          cargo update -p scintia-96
+          
           # Configure Git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Commit and Push back only if there are changes
-          git add Cargo.toml
+          git add Cargo.toml Cargo.lock
           if ! git diff --cached --quiet; then
             git commit -m "chore: bump version to $VERSION [skip ci]"
             
@@ -56,7 +59,7 @@ jobs:
             git push origin HEAD:${{ github.event.repository.default_branch }}
             git push origin ${{ github.event.release.tag_name }} --force
           else
-            echo "Version in Cargo.toml is already $VERSION. Skipping commit."
+            echo "Version in Cargo.toml and Cargo.lock is already $VERSION. Skipping commit."
           fi
 
       - name: Publish to Crates.io
